@@ -2,6 +2,10 @@
 
 void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
 
+  /////////////////////////////////
+  // FILE I/O
+  /////////////////////////////////
+
   // OUTPUT FILE
   foutput = new TFile("./output/output.root","RECREATE");
   
@@ -28,7 +32,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
   TDirectoryFile *folder_Y = (TDirectoryFile*)fin_Y->Get("hists");
   
   /////////////////////////////////
-  // FIND PEAK
+  // PEAK ANALYSIS
   /////////////////////////////////
   
   // INITIALIZATION
@@ -141,6 +145,10 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
    std::ofstream fout2_Y("./ch_1pe_Y.dat");
 
 
+  /////////////////////////////////
+  // MEAN ANALYSIS
+  /////////////////////////////////
+
   // X
   pre_Ch = -1;  
   while (fin2_X >> i_Ch >> i_peak >> mean){
@@ -188,7 +196,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     std::cout << "X: " <<  i_Ch << "\t" << i_peak << "\t" << mean << std::endl;
   }
 
-  // BGN -- for ch.63
+  // BGN X -- for ch.63
   diff_mean = (*std::max_element(v_mean.begin(), v_mean.end())) - (*std::min_element(v_mean.begin(), v_mean.end()));
   
   if(v_mean.size()==1) avg_mean = (diff_mean)/(v_mean.size());
