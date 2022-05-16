@@ -1,0 +1,61 @@
+//example of macro illustrating how to superimpose two histograms
+#include "TCanvas.h"
+#include "TStyle.h"
+#include <TH1.h>
+#include "TGaxis.h"
+#include "TRandom.h"
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <TGraphErrors.h>
+#include <TCanvas.h>
+#include <TStyle.h>
+#include <cmath>
+#include <TF1.h>
+#include <stdlib.h>
+
+#include <TROOT.h>
+#include <TFile.h>
+#include <vector>
+#include <TH2.h>
+#include <map>
+#include <math.h>
+#include <TTree.h>
+#include <algorithm>
+#include <cassert>
+#include <utility>
+#include <TSpectrum.h>   
+void twoscales(){
+  //  std::string str_inf_X="/Users/yamaguchinaoki/cernbox2/BeamLine/software/offlineAna/run/20220317_Coli/output.root";
+    std::string str_inf_X="../run/output/output_0317_Sr_noDacTuneCoinTrigger_50000.root";
+
+  
+  TFile *fin_X = new TFile(Form("%s",str_inf_X.c_str()), "read");
+  
+  TCanvas *c1 = new TCanvas("c1","",600,400);
+  TH1F* hit;
+  hit = (TH1F*)fin_X->Get("hity");
+  TH1F* h_1pe;
+  h_1pe = (TH1F*)fin_X->Get("h_1pe_ch_Y");
+    
+  //create/fill draw h1
+  gStyle->SetOptStat(kFALSE);
+  hit->Draw();
+  c1->Update();  
+  std::cout << h_1pe->GetMaximum() << std::endl;
+
+  //scale hint1 to the pad coordinates
+  float rightmax = 1.1*h_1pe->GetMaximum();
+  float scale = gPad->GetUymax()/rightmax;
+  h_1pe->SetLineColor(kRed);
+  h_1pe->Scale(scale);
+  h_1pe->Draw("same");
+
+  //draw an axis on the right side
+  TGaxis *axis = new TGaxis(gPad->GetUxmax(),gPad->GetUymin(),
+			    gPad->GetUxmax(), gPad->GetUymax(),0,rightmax,510,"+L");
+  axis->SetLineColor(kRed);
+  axis->SetLabelColor(kRed);
+  axis->Draw();
+
+}
