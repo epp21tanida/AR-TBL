@@ -61,8 +61,8 @@ float mean=0., avg_mean=-1., sum_mean=0., diff_mean=0.;
 std::vector<float> v_mean;
 TH1F *h_1pe_mppc_X = new TH1F("h_1pe_mppc_X", "1pe distribution X",200,20,40);
 TH1F *h_1pe_mppc_Y = new TH1F("h_1pe_mppc_Y", "1pe distribution Y",200,20,40);
-TH1F *h_1pe_Ch_X = new TH1F("h_1pe_ch_X", "1pe distribution X;Ch",64,0,64);
-TH1F *h_1pe_Ch_Y = new TH1F("h_1pe_ch_Y", "1pe distribution Y;Ch",64,0,64);
+TH1F *h_1pe_Ch_X   = new TH1F("h_1pe_ch_X", "1pe distribution X;Ch",64,0,64);
+TH1F *h_1pe_Ch_Y   = new TH1F("h_1pe_ch_Y", "1pe distribution Y;Ch",64,0,64);
 
 //TH1F *h_eV;
 
