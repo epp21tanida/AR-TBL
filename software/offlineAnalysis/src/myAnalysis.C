@@ -25,6 +25,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     return;
   }
 
+  // RETRIEVE TTREE
   TTree *tree_X = (TTree*) fin_X->Get("eventtree");
   TTree *tree_Y = (TTree*) fin_Y->Get("eventtree");
   
@@ -33,9 +34,13 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
   
   /////////////////////////////////
   // PEAK ANALYSIS
+  // We scan the histograms using the TSpectrum::Search method and find the first two
+  // peaks in the distributions. The position of the peaks along the x-axis is then used
+  // to set the initial mean value for a TF1 Gaussian to be later fitted within a range
+  // of the peaks. The subsequent fitted mean value is then saved, to be later used.
   /////////////////////////////////
   
-  // INITIALIZATION
+  // INITIALIZATION VALUES
   nMaxPeak_X = 0,   nMaxPeak_Y = 0;
   x_peak_X   = 0.,  x_peak_Y   = 0.;
   x_mean_X   = 0.,  x_mean_Y   = 0.;
@@ -43,15 +48,15 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
   std::ofstream fout_X("./output/peakFind_out_X.dat");
   std::ofstream fout_Y("./output/peakFind_out_Y.dat");
   
-
   // DECLARE HISTO
   h_X = new TH1F();
   h_Y = new TH1F();
   
-  // DECLARE SPECTRUM
+  // DECLARE SPECTRUM (maxpeaks = 2)
   TSpectrum *s_X = new TSpectrum(maxpeaks);
   TSpectrum *s_Y = new TSpectrum(maxpeaks);
 
+  // DECLARE TF1 GAUSSIANS FOR FITTING
   for(int i_count=0; i_count < maxpeaks; i_count++){
     f_X[i_count] = new TF1(Form("f_X%d",i_count), "gaus");
     f_Y[i_count] = new TF1(Form("f_Y%d",i_count), "gaus");
@@ -59,11 +64,12 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
 
   c1 = new TCanvas("c1","c1");
   
-  // BEGIN--Channel loop
+  // LOOP BY CHANNEL
   for(int i_Ch=0; i_Ch < max_Ch; i_Ch++){
 
     std::cout << "##################" << std::endl;
 
+    // RETRIEVE INPUT HISTOS
     h_X = (TH1F*)folder_X->Get(Form("ch%i", i_Ch));
     h_Y = (TH1F*)folder_Y->Get(Form("ch%i", i_Ch));
 
@@ -72,6 +78,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     
     std::cout << Form("ch%i",i_Ch) << std::endl;
 
+    // TSPECTRUM::SEARCH (sigma = 2, threshold = 0.0001)
     s_X->Search(h_X, tS_sigma, "", tS_threshold);
     s_Y->Search(h_Y, tS_sigma, "", tS_threshold);
     
@@ -81,19 +88,18 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     x_MaxPeak_X = s_X->GetPositionX()[0];
     x_MaxPeak_Y = s_Y->GetPositionX()[0];
     
-    // Finding the Peak Value
-    
-    // X
+    // X-AXIS FIBERS
     for(int i_peak=0; i_peak < nMaxPeak_X; i_peak++){//for X
       
       x_peak_X = s_X->GetPositionX()[i_peak];
       
       if(x_peak_X < x_MaxPeak_X) continue;
       
+      // TF1 GAUSSIAN FIT
       f_X[i_peak]->SetParameter(1, x_peak_X);
-      
       h_X->Fit(Form("f_X%i", i_peak),"+","", x_peak_X-10, x_peak_X+10);
       
+      // GAUSSIAN POST-FIT MEAN VALUE
       x_mean_X = f_X[i_peak]->GetParameter(1);
       
       std::cout << "X: "<< i_Ch << "\t" << i_peak << "\t" << x_mean_X << std::endl;
@@ -105,17 +111,18 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     h_X->GetXaxis()->SetRangeUser(700,2000);
     if(savePDF==true) c1->Print("./output/Form(x_ch%i.pdf,i_Ch)");
     
-    // Y
+    // Y-AXIS FIBERS
     for(int i_peak=0; i_peak < nMaxPeak_Y; i_peak++){//for Y
       
       x_peak_Y = s_Y->GetPositionX()[i_peak];
       
       if(x_peak_Y < x_MaxPeak_Y) continue;
       
+      // TF1 GAUSSIAN FIT
       f_Y[i_peak]->SetParameter(1, x_peak_Y);
-      
       h_Y->Fit(Form("f_Y%i", i_peak),"+","", x_peak_Y-10, x_peak_Y+10);
       
+      // GAUSSIAN POST-FIT MEAN VALUE
       x_mean_Y = f_Y[i_peak]->GetParameter(1);
       
       std::cout << "Y: " << i_Ch << "\t" << i_peak << "\t" << x_mean_Y << std::endl;
@@ -131,48 +138,47 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     foutput->cd();
     h_X->Write();
     h_Y->Write();
-
   }
 
-   fout_X.close();    
-   fout_Y.close();    
+  fout_X.close();    
+  fout_Y.close();    
   
-   c1->SetLogy(false);
+  c1->SetLogy(false);
    
-   std::ifstream fin2_X("./output/peakFind_out_X.dat");
-   std::ifstream fin2_Y("./output/peakFind_out_Y.dat");
-   std::ofstream fout2_X("./ch_1pe_X.dat");
-   std::ofstream fout2_Y("./ch_1pe_Y.dat");
-
-
   /////////////////////////////////
   // MEAN ANALYSIS
+  // With the previously obtained fitted mean values for the first two peaks,
+  // we calculate the amplitude difference between the peaks and save the lowest
+  // one of the two for the next step.
   /////////////////////////////////
 
-  // X
+  std::ifstream fin2_X("./output/peakFind_out_X.dat");
+  std::ifstream fin2_Y("./output/peakFind_out_Y.dat");
+  std::ofstream fout2_X("./ch_1pe_X.dat");
+  std::ofstream fout2_Y("./ch_1pe_Y.dat");
+
+  // X-AXIS FIBERS
   pre_Ch = -1;  
   while (fin2_X >> i_Ch >> i_peak >> mean){
     
     sum_mean = 0.;
     
-    if(pre_Ch==i_Ch){//same Ch(MPPC)
-      v_mean.push_back(mean);
-    }
+    // same Ch(MPPC)
+    if(pre_Ch==i_Ch){ v_mean.push_back(mean);}
     
-    else if (pre_Ch==-1){//1st Ch(MPPC)
+    // 1st Ch(MPPC)
+    else if (pre_Ch==-1){
       
       v_mean.clear();
       v_mean.push_back(mean);
       
       pre_Ch = i_Ch;
     }
-    
+
+    // next Ch(MPPC) (2 or more)    
     else{
 
-      //next Ch(MPPC) (2 or more)
       diff_mean = (*std::max_element(v_mean.begin(), v_mean.end())) - (*std::min_element(v_mean.begin(), v_mean.end()));
-
-      //std::cout << "Max:: " <<*std::max_element(v_mean.begin(), v_mean.end()) << " Min:: " <<*std::min_element(v_mean.begin(), v_mean.end()) << std::endl;
       
       if(v_mean.size()==1) avg_mean = (diff_mean)/(v_mean.size());
       else                 avg_mean = (diff_mean)/(v_mean.size()-1);
@@ -196,7 +202,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     std::cout << "X: " <<  i_Ch << "\t" << i_peak << "\t" << mean << std::endl;
   }
 
-  // BGN X -- for ch.63
+  // BGN X-- for ch.63
   diff_mean = (*std::max_element(v_mean.begin(), v_mean.end())) - (*std::min_element(v_mean.begin(), v_mean.end()));
   
   if(v_mean.size()==1) avg_mean = (diff_mean)/(v_mean.size());
@@ -222,7 +228,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
   std::cout << "#########################" << std::endl;
   
 
-  // Y
+  // Y-AXIS FIBERS
   pre_Ch = -1;  
   while (fin2_Y >> i_Ch >> i_peak >> mean){
     
@@ -287,6 +293,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
   
   fout2_Y.close();
   std::cout << "#########################" << std::endl;
+  
   //h_1pe_mppc->Draw();
 
   foutput->cd();
@@ -300,15 +307,17 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
  
   std::ifstream fin3_X("./ch_1pe_X.dat");
   std::ifstream fin3_Y("./ch_1pe_Y.dat");
-  std::ifstream fin4_X("./output/peakFind_X.dat");
-  std::ifstream fin4_Y("./output/peakFind_Y.dat");
+
+  // std::ifstream fin4_X("./output/peakFind_X.dat");
+  // std::ifstream fin4_Y("./output/peakFind_Y.dat");
   
   int maxBin = 0;//ADC max bin
 
   nBin = 0;
-  tmp_i_Ch = 0,  tmp_i_peak = 0, tmp_mean = 0.;
-  pe_ADC = 0., pe_Energy = 0., x_adc_0pe = 0.;
+  tmp_i_Ch = 0,  tmp_i_peak = 0,  tmp_mean  = 0.;
+  pe_ADC   = 0., pe_Energy  = 0., x_adc_0pe = 0.;
 
+  // INITIALIZE ADC ARRAYS
   for (int count_i=0; count_i<max_Ch; count_i++){//init.
     
     adc_1pe_X[count_i] = -1.0;
@@ -361,11 +370,15 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
   */
   //  h_eV->Draw();
   
-  // HITS  
+  //////////////////////////
+  // HITS ANALYSIS 
+  //////////////////////////
+
   nEvent = 0;
   max_adc_X = -1, max_fiberCh_X = -1;
   max_adc_Y = -1, max_fiberCh_Y = -1;
   
+  // INITIALIZE ARRAYS & HISTOS
   for (int cnt_i=0; cnt_i < max_Ch; cnt_i++){
     
     adc_X[cnt_i] = -1;
@@ -375,33 +388,36 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     photon_Y[cnt_i] = -1;
   }
 
-  hitmap = new TH2F("hitmap","hitmap;X;Y",64,0,64,64,0,64);
-  hitX   = new TH1F("hitx", "hit X",64,0,64);
-  hitY   = new TH1F("hity", "hit Y",64,0,64);
+  // INITIALIZE HIT HISTOS
+  hitmap = new TH2F("hitmap", "hitmap;X;Y", 64,0,64,64,0,64);
+  hitX   = new TH1F("hitx",   "hit X",      64,0,64);
+  hitY   = new TH1F("hity",   "hit Y",      64,0,64);
   
-  ///main
+  // RETRIEVE TTREES
   tree_X->SetBranchAddress("adc_ch", &adc_X);
   tree_Y->SetBranchAddress("adc_ch", &adc_Y);
   
   if(tree_X->GetEntries() != tree_Y->GetEntries()) {
-    std::cout << "X and Y file are incorrelct, number of entry is different" << std::endl;
+    std::cout << "X and Y file are incorrect, number of entry is different" << std::endl;
   }
   
   const int Nentry = tree_X->GetEntries();
   std::cout << "Entry:: " <<  Nentry << std::endl;
   
-  for(int ientry=0; ientry < Nentry; ientry++){//event loop
+  // EVENT LOOP
+  for(int ientry=0; ientry < Nentry; ientry++){
   
     tree_X->GetEntry(ientry);
     tree_Y->GetEntry(ientry);
     
-    //convert[adc->Nphoton]
+    // CONVERT [adc->Nphoton]
     for (int cnt_i=0; cnt_i<max_Ch; cnt_i++){
   
       photon_X[cnt_i] = (adc_X[cnt_i] - adc_0pe_X[cnt_i])/(adc_1pe_X[cnt_i]);
       photon_Y[cnt_i] = (adc_Y[cnt_i] - adc_0pe_Y[cnt_i])/(adc_1pe_Y[cnt_i]);
     }
     
+    // GET THE ADC WITH THE HIGHEST VALUE
     max_adc_X = *std::max_element(adc_X, adc_X+64);
     max_adc_Y = *std::max_element(adc_Y, adc_Y+64);
     
@@ -411,6 +427,7 @@ void myAnalysis(std::string str_inf_X="", std::string str_inf_Y=""){
     max_fiberCh_X = std::max_element(photon_X, photon_X+64) - photon_X;
     max_fiberCh_Y = std::max_element(photon_Y, photon_Y+64) - photon_Y;
 
+    // FILL HIT MAP ACCORDING TO FIBER POSITION
     hitmap->Fill(max_fiberCh_X+0.5, max_fiberCh_Y+0.5);
     hitX->Fill(max_fiberCh_X+0.5);
     hitY->Fill(max_fiberCh_Y+0.5);
