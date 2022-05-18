@@ -13,20 +13,19 @@
 TString root_file = "../../../../artbl_data/20220512_2_Sr_1000000_af.root";
 TString gain_file = "./output/peakFind_out_X.dat";
 TString ofilename = "./output/mppc_gain/20220512_2_Sr_1000000_af.pdf";
-TString mip_file = "./output/mppc_gain/20220512_2_Sr_1000000_af.dat";
+TString mip_file  = "./output/mppc_gain/20220512_2_Sr_1000000_af.dat";
 
 Int_t mppc_GainCalib() {
+
+  gStyle->SetOptFit(1);
+  
   std::cout << "mppc_GainCalib ..." << std::endl;
   //  mkdir ./output/GainCalib
   
   const Int_t N = 64;
   
-  // show fit results
-  gStyle->SetOptFit(1);
-  
-  // open root file and get tree
-  
-  
+
+  // INPUT FILE
   TFile* ifile = TFile::Open(root_file.Data(), "READ");
   if (!ifile->IsOpen()) {
     std::cerr << "[error] file is not opened" << std::endl;
@@ -38,10 +37,10 @@ Int_t mppc_GainCalib() {
     std::cerr << "[error] tree is not found" << std::endl;
     return 1;
   }
-  itree->Print();
   
+  // itree->Print();
   
-  // open gain file (load pedestal and gain)
+  // LOAD PEDESTAL AND GAIN FILE
   Double_t pedestal[N] = {}, gain[N] = {};
   
   std::ifstream gainfile(gain_file);
@@ -53,21 +52,13 @@ Int_t mppc_GainCalib() {
   Int_t ch, ipeak;
   Double_t adc;
   while (gainfile >> ch >> ipeak >> adc) {
-    // std::cout << ch << "\t" << ipeak << "\t" << adc << std::endl;
-    if (ipeak == 0) {
-      pedestal[ch] = adc;
-    } else {
-      gain[ch] = adc - pedestal[ch];
-    }
+    
+    if (ipeak == 0) {pedestal[ch] = adc;} 
+    else            {gain[ch]     = adc - pedestal[ch];}
   }
-  // return 0;
-  // for (Int_t ch = 0; ch < N; ++ch) {
-  //   std::cout << ch << "\t" << pedestal[ch] << "\t" << gain[ch] << std::endl;
-  // }
-  // return 0;
   
-  //set temporal values for pedestal and gain
-  //  TH1F* temp_array[128]={0x0};  
+  // SET TEMPORAL VALUES FOR PEDESTAL AND GAIN
+  // TH1F* temp_array[128]={0x0};  
   for (Int_t ch = 0; ch < N; ++ch) {
     itree->Draw(Form("adc_ch[%d] >> htemp(4000,0,4000)", ch));
     TH1* htemp = ((TH1F*)gROOT->FindObject("htemp"));
@@ -78,7 +69,7 @@ Int_t mppc_GainCalib() {
   
   TCanvas *c1 = new TCanvas("c1", "c1", 1000, 1000);
   
-  // create fitting function of gaussian
+  // TF1 GAUS FOR FITTING
   TF1* fGauss = new TF1("fGauss", "gaus(0)");
   
   // open output mip file
@@ -91,13 +82,10 @@ Int_t mppc_GainCalib() {
   // draw and fit for each channel
   TCanvas::MakeDefCanvas();
   gPad->SetLogy();
-  
-  //  TString ofilename = "./20220512_1_Sr_200000_af.pdf";
-  //  TString ofilename = Form("./output/mppc_gain/%s.pdf",mppc_gain_file.Data());
   gPad->Print(ofilename + "[");
   
   for (Int_t ch = 0; ch < N; ++ch) {
-//for (Int_t ch = 0; ch < 3; ++ch) {
+    
     // draw raw hist
     itree->Draw(Form("adc_ch[%d] >> htemp_%d(4000,0,4000)", ch, ch));
     gPad->Print(ofilename);
